@@ -1,0 +1,26 @@
+# Variables de entorno — nunca subir a git
+.env
+
+# Configuración local con credenciales
+livesalesbot_config.json
+
+# Caché de audio generado
+audio_cache/
+
+# Claude Code (configuración local del IDE)
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Entornos virtuales
+venv/
+env/
+.venv/
