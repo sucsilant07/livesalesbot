@@ -448,20 +448,25 @@ class APIPage(ctk.CTkFrame):
         super().__init__(master, corner_radius=0, fg_color="transparent")
         self._app = master
         self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
         self._build()
 
     def _build(self):
+        scroll = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        scroll.grid(row=0, column=0, sticky="nsew")
+        scroll.columnconfigure(0, weight=1)
+
         ctk.CTkLabel(
-            self, text="Configuracion de APIs",
+            scroll, text="Configuracion de APIs",
             font=ctk.CTkFont(size=20, weight="bold"), anchor="w",
         ).grid(row=0, column=0, sticky="w", padx=24, pady=(24, 4))
         ctk.CTkLabel(
-            self,
+            scroll,
             text="Ingresa tus credenciales para conectar el bot a TikTok y a la IA de Claude.",
             text_color="gray60", anchor="w",
         ).grid(row=1, column=0, sticky="w", padx=24, pady=(0, 20))
 
-        form = ctk.CTkFrame(self, fg_color="transparent")
+        form = ctk.CTkFrame(scroll, fg_color="transparent")
         form.grid(row=2, column=0, sticky="ew", padx=24)
         form.columnconfigure(1, weight=1)
 
@@ -493,20 +498,20 @@ class APIPage(ctk.CTkFrame):
             row=row, column=2, padx=(8, 0), pady=12)
 
         # ── Sección: Proveedor de IA ──────────────────────────────
-        sep_ia = ctk.CTkFrame(self, height=1, fg_color="gray30")
+        sep_ia = ctk.CTkFrame(scroll, height=1, fg_color="gray30")
         sep_ia.grid(row=3, column=0, sticky="ew", padx=24, pady=(24, 0))
 
         ctk.CTkLabel(
-            self, text="Proveedor de IA",
+            scroll, text="Proveedor de IA",
             font=ctk.CTkFont(size=14, weight="bold"), anchor="w",
         ).grid(row=4, column=0, sticky="w", padx=24, pady=(12, 0))
         ctk.CTkLabel(
-            self,
+            scroll,
             text="Elige con que IA quieres que el bot procese y responda los comentarios.",
             text_color="gray60", anchor="w",
         ).grid(row=5, column=0, sticky="w", padx=24, pady=(0, 8))
 
-        ia_frame = ctk.CTkFrame(self, fg_color="transparent")
+        ia_frame = ctk.CTkFrame(scroll, fg_color="transparent")
         ia_frame.grid(row=6, column=0, sticky="ew", padx=24)
         ia_frame.columnconfigure(1, weight=1)
 
@@ -520,7 +525,7 @@ class APIPage(ctk.CTkFrame):
             width=360,
         ).grid(row=0, column=1, sticky="w", pady=12)
 
-        form_oa = ctk.CTkFrame(self, fg_color="transparent")
+        form_oa = ctk.CTkFrame(scroll, fg_color="transparent")
         form_oa.grid(row=7, column=0, sticky="ew", padx=24)
         form_oa.columnconfigure(1, weight=1)
         self._make_field(form_oa, 0, "OpenAI API Key", "openai_api_key",
@@ -529,20 +534,20 @@ class APIPage(ctk.CTkFrame):
                          api, masked=True, help_topic="gemini_api_key")
 
         # ── Sección: ElevenLabs (opcional) ────────────────────────
-        sep = ctk.CTkFrame(self, height=1, fg_color="gray30")
+        sep = ctk.CTkFrame(scroll, height=1, fg_color="gray30")
         sep.grid(row=8, column=0, sticky="ew", padx=24, pady=(24, 0))
 
         ctk.CTkLabel(
-            self, text="ElevenLabs (opcional)",
+            scroll, text="ElevenLabs (opcional)",
             font=ctk.CTkFont(size=14, weight="bold"), anchor="w",
         ).grid(row=9, column=0, sticky="w", padx=24, pady=(12, 0))
         ctk.CTkLabel(
-            self,
+            scroll,
             text="Si configuras estos campos, el bot usara ElevenLabs en lugar de Edge TTS para voces mas realistas.",
             text_color="gray60", anchor="w",
         ).grid(row=10, column=0, sticky="w", padx=24, pady=(0, 8))
 
-        form_el = ctk.CTkFrame(self, fg_color="transparent")
+        form_el = ctk.CTkFrame(scroll, fg_color="transparent")
         form_el.grid(row=11, column=0, sticky="ew", padx=24)
         form_el.columnconfigure(1, weight=1)
 
@@ -552,9 +557,9 @@ class APIPage(ctk.CTkFrame):
                          api, masked=False, help_topic="elevenlabs_voice_id")
 
         ctk.CTkButton(
-            self, text="Guardar configuracion", height=40,
+            scroll, text="Guardar configuracion", height=40,
             command=self._save,
-        ).grid(row=12, column=0, sticky="w", padx=24, pady=(28, 0))
+        ).grid(row=12, column=0, sticky="w", padx=24, pady=(28, 16))
 
     def _make_field(self, form, row: int, label: str, key: str, api: dict,
                     masked: bool, help_topic: str):
