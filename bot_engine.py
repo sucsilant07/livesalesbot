@@ -219,7 +219,7 @@ class BotEngine:
     async def _tts_edge(self, clean: str, path: str):
         for attempt in range(1, 4):
             try:
-                await edge_tts.Communicate(clean, self._tts_voice, rate="-18%").save(path)
+                await edge_tts.Communicate(clean, self._tts_voice).save(path)
                 return
             except Exception as e:
                 if attempt == 3:
@@ -233,9 +233,9 @@ class BotEngine:
             "text": clean,
             "model_id": "eleven_multilingual_v2",
             "voice_settings": {
-                "stability": 0.28,
-                "similarity_boost": 0.82,
-                "style": 0.35,
+                "stability": 0.45,
+                "similarity_boost": 0.80,
+                "style": 0.15,
                 "use_speaker_boost": True,
             },
         }).encode("utf-8")
