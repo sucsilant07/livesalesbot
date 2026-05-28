@@ -13,6 +13,8 @@ DEFAULT_CONFIG = {
         "tts_voice": "es-PE-CamilaNeural",
         "elevenlabs_api_key": "",
         "elevenlabs_voice_id": "",
+        "llm_provider": "anthropic",
+        "openai_api_key": "",
     },
     "store": {
         "name": "",

@@ -89,6 +89,25 @@ HELP_TEXTS: dict[str, dict] = {
             "learn.microsoft.com/azure/cognitive-services/speech-service/language-support"
         ),
     },
+    "openai_api_key": {
+        "title": "Como obtener la OpenAI API Key",
+        "body": (
+            "La API Key de OpenAI permite al bot usar GPT en lugar de Claude.\n\n"
+            "PASOS:\n"
+            "1. Ve a: platform.openai.com y crea una cuenta\n\n"
+            "2. En el menu superior haz clic en tu perfil\n\n"
+            "3. Selecciona 'API keys'\n\n"
+            "4. Haz clic en 'Create new secret key'\n\n"
+            "5. Ponle un nombre (ej: LiveSalesBot) y confirma\n\n"
+            "6. Copia la clave — empieza con sk-...\n"
+            "   IMPORTANTE: solo puedes verla una vez.\n"
+            "   Guardala en un lugar seguro antes de cerrar.\n\n"
+            "7. Pegala en el campo 'OpenAI API Key' del bot\n\n"
+            "MODELO: El bot usa gpt-4o-mini, el modelo mas\n"
+            "economico de OpenAI (~$0.15 por millon de tokens).\n"
+            "Necesitas saldo en tu cuenta de OpenAI."
+        ),
+    },
     "elevenlabs_api_key": {
         "title": "Como obtener la ElevenLabs API Key",
         "body": (
@@ -456,22 +475,56 @@ class APIPage(ctk.CTkFrame):
                       command=lambda: HelpWindow(self, "tts_voice")).grid(
             row=row, column=2, padx=(8, 0), pady=12)
 
-        # Separador ElevenLabs (sección opcional)
-        sep = ctk.CTkFrame(self, height=1, fg_color="gray30")
-        sep.grid(row=3, column=0, sticky="ew", padx=24, pady=(24, 0))
+        # ── Sección: Proveedor de IA ──────────────────────────────
+        sep_ia = ctk.CTkFrame(self, height=1, fg_color="gray30")
+        sep_ia.grid(row=3, column=0, sticky="ew", padx=24, pady=(24, 0))
 
         ctk.CTkLabel(
-            self, text="ElevenLabs (opcional)",
+            self, text="Proveedor de IA",
             font=ctk.CTkFont(size=14, weight="bold"), anchor="w",
         ).grid(row=4, column=0, sticky="w", padx=24, pady=(12, 0))
         ctk.CTkLabel(
             self,
-            text="Si configuras estos campos, el bot usara ElevenLabs en lugar de Edge TTS para voces mas realistas.",
+            text="Elige con que IA quieres que el bot procese y responda los comentarios.",
             text_color="gray60", anchor="w",
         ).grid(row=5, column=0, sticky="w", padx=24, pady=(0, 8))
 
+        ia_frame = ctk.CTkFrame(self, fg_color="transparent")
+        ia_frame.grid(row=6, column=0, sticky="ew", padx=24)
+        ia_frame.columnconfigure(1, weight=1)
+
+        ctk.CTkLabel(ia_frame, text="Proveedor activo", anchor="w", width=210).grid(
+            row=0, column=0, sticky="w", pady=12, padx=(0, 12))
+        self._provider_var = tk.StringVar(value=api.get("llm_provider", "anthropic"))
+        ctk.CTkSegmentedButton(
+            ia_frame,
+            values=["anthropic", "openai"],
+            variable=self._provider_var,
+            width=260,
+        ).grid(row=0, column=1, sticky="w", pady=12)
+
+        form_oa = ctk.CTkFrame(self, fg_color="transparent")
+        form_oa.grid(row=7, column=0, sticky="ew", padx=24)
+        form_oa.columnconfigure(1, weight=1)
+        self._make_field(form_oa, 0, "OpenAI API Key", "openai_api_key",
+                         api, masked=True, help_topic="openai_api_key")
+
+        # ── Sección: ElevenLabs (opcional) ────────────────────────
+        sep = ctk.CTkFrame(self, height=1, fg_color="gray30")
+        sep.grid(row=8, column=0, sticky="ew", padx=24, pady=(24, 0))
+
+        ctk.CTkLabel(
+            self, text="ElevenLabs (opcional)",
+            font=ctk.CTkFont(size=14, weight="bold"), anchor="w",
+        ).grid(row=9, column=0, sticky="w", padx=24, pady=(12, 0))
+        ctk.CTkLabel(
+            self,
+            text="Si configuras estos campos, el bot usara ElevenLabs en lugar de Edge TTS para voces mas realistas.",
+            text_color="gray60", anchor="w",
+        ).grid(row=10, column=0, sticky="w", padx=24, pady=(0, 8))
+
         form_el = ctk.CTkFrame(self, fg_color="transparent")
-        form_el.grid(row=6, column=0, sticky="ew", padx=24)
+        form_el.grid(row=11, column=0, sticky="ew", padx=24)
         form_el.columnconfigure(1, weight=1)
 
         self._make_field(form_el, 0, "ElevenLabs API Key", "elevenlabs_api_key",
@@ -482,7 +535,7 @@ class APIPage(ctk.CTkFrame):
         ctk.CTkButton(
             self, text="Guardar configuracion", height=40,
             command=self._save,
-        ).grid(row=7, column=0, sticky="w", padx=24, pady=(28, 0))
+        ).grid(row=12, column=0, sticky="w", padx=24, pady=(28, 0))
 
     def _make_field(self, form, row: int, label: str, key: str, api: dict,
                     masked: bool, help_topic: str):
@@ -510,6 +563,7 @@ class APIPage(ctk.CTkFrame):
         for k, v in self._vars.items():
             api[k] = v.get().strip()
         api["tts_voice"] = self._voice_var.get()
+        api["llm_provider"] = self._provider_var.get()
         save_config(self._app.config_data)
         messagebox.showinfo("Guardado", "Configuracion de API guardada correctamente.", parent=self)
 
@@ -992,10 +1046,15 @@ class App(ctk.CTk):
         if self._bot and self._bot.running:
             messagebox.showinfo("Bot activo", "El bot ya esta en marcha.", parent=self)
             return
-        if not self.config_data.get("api", {}).get("anthropic_api_key", ""):
+        provider = self.config_data.get("api", {}).get("llm_provider", "anthropic")
+        if provider == "openai":
+            key_field, key_label = "openai_api_key", "OpenAI API Key"
+        else:
+            key_field, key_label = "anthropic_api_key", "Anthropic API Key"
+        if not self.config_data.get("api", {}).get(key_field, ""):
             messagebox.showerror(
                 "Falta API Key",
-                "Debes configurar la Anthropic API Key antes de iniciar el bot.\n\n"
+                f"Debes configurar la {key_label} antes de iniciar el bot.\n\n"
                 "Ve a la seccion 'Configuracion API'.",
                 parent=self,
             )

@@ -10,7 +10,11 @@ import urllib.error
 import urllib.request
 from typing import Callable, Optional
 
-import anthropic
+try:
+    import anthropic
+except ImportError:
+    anthropic = None
+
 import edge_tts
 import pygame
 
@@ -87,14 +91,31 @@ class BotEngine:
         self._pause = float(settings.get("pause_between_segments", 0.4))
         self._test_mode = settings.get("test_mode", False)
 
-        api_key = api.get("anthropic_api_key", "")
-        if not api_key:
-            self.log("ERROR: Falta la Anthropic API Key. Configurala en 'Configuracion API'.")
-            self._running = False
-            self._on_status(False)
-            return
+        self._llm_provider = api.get("llm_provider", "anthropic")
+        self._openai_api_key = api.get("openai_api_key", "").strip()
 
-        self._claude = anthropic.Anthropic(api_key=api_key)
+        if self._llm_provider == "openai":
+            if not self._openai_api_key:
+                self.log("ERROR: Falta la OpenAI API Key. Configurala en 'Configuracion API'.")
+                self._running = False
+                self._on_status(False)
+                return
+            self._claude = None
+            self.log("IA: OpenAI (gpt-4o-mini)")
+        else:
+            anthropic_key = api.get("anthropic_api_key", "")
+            if not anthropic_key:
+                self.log("ERROR: Falta la Anthropic API Key. Configurala en 'Configuracion API'.")
+                self._running = False
+                self._on_status(False)
+                return
+            if anthropic is None:
+                self.log("ERROR: Paquete 'anthropic' no instalado. Ejecuta: pip install anthropic")
+                self._running = False
+                self._on_status(False)
+                return
+            self._claude = anthropic.Anthropic(api_key=anthropic_key)
+            self.log("IA: Anthropic (claude-haiku-4-5)")
 
         try:
             pygame.init()
@@ -250,41 +271,70 @@ class BotEngine:
             pygame.mixer.music.stop()
             raise
 
-    # ── Claude ─────────────────────────────────────────────────
+    # ── LLM helpers ────────────────────────────────────────────
+
+    def _openai_chat(self, system: str, user_msg: str, max_tokens: int) -> str:
+        payload = json.dumps({
+            "model": "gpt-4o-mini",
+            "max_tokens": max_tokens,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user_msg},
+            ],
+        }).encode("utf-8")
+        headers = {
+            "Authorization": f"Bearer {self._openai_api_key}",
+            "Content-Type": "application/json",
+        }
+        req = urllib.request.Request(
+            "https://api.openai.com/v1/chat/completions",
+            data=payload, headers=headers, method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read())
+        return data["choices"][0]["message"]["content"].strip()
 
     def _is_product_question(self, comment: str) -> bool:
+        system = (
+            "Clasifica si el comentario es pregunta sobre productos, precios, "
+            "beneficios, disponibilidad, tienda, ubicacion, envios o delivery. "
+            "Responde unicamente SI o NO."
+        )
         try:
-            r = self._claude.messages.create(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=5,
-                system=(
-                    "Clasifica si el comentario es pregunta sobre productos, precios, "
-                    "beneficios, disponibilidad, tienda, ubicacion, envios o delivery. "
-                    "Responde unicamente SI o NO."
-                ),
-                messages=[{"role": "user", "content": comment}],
-            )
-            return "SI" in r.content[0].text.upper()
+            if self._llm_provider == "openai":
+                text = self._openai_chat(system, comment, 5)
+            else:
+                r = self._claude.messages.create(
+                    model="claude-haiku-4-5-20251001",
+                    max_tokens=5,
+                    system=system,
+                    messages=[{"role": "user", "content": comment}],
+                )
+                text = r.content[0].text
+            return "SI" in text.upper()
         except Exception:
             return False
 
     def _generate_response(self, user: str, comment: str) -> str:
+        system = (
+            f"Eres la vendedora de {self._store_name} en un live de TikTok. "
+            "Solo texto plano, sin emojis, sin asteriscos, sin guiones. "
+            "Maximo 2 oraciones cortas. Tono amigable. "
+            "Para contacto di siempre 'escribenos al verdecito en pantalla'.\n\n"
+            f"CATALOGO:\n{self._catalog}"
+        )
+        user_msg = f"{user} pregunta: {comment}. Responde en voz alta."
         try:
-            r = self._claude.messages.create(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=130,
-                system=(
-                    f"Eres la vendedora de {self._store_name} en un live de TikTok. "
-                    "Solo texto plano, sin emojis, sin asteriscos, sin guiones. "
-                    "Maximo 2 oraciones cortas. Tono amigable. "
-                    "Para contacto di siempre 'escribenos al verdecito en pantalla'.\n\n"
-                    f"CATALOGO:\n{self._catalog}"
-                ),
-                messages=[
-                    {"role": "user", "content": f"{user} pregunta: {comment}. Responde en voz alta."}
-                ],
-            )
-            return r.content[0].text.strip()
+            if self._llm_provider == "openai":
+                return self._openai_chat(system, user_msg, 130)
+            else:
+                r = self._claude.messages.create(
+                    model="claude-haiku-4-5-20251001",
+                    max_tokens=130,
+                    system=system,
+                    messages=[{"role": "user", "content": user_msg}],
+                )
+                return r.content[0].text.strip()
         except Exception:
             return "Escribenos al verdecito para mas informacion."
 
