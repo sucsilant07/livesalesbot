@@ -219,7 +219,7 @@ class BotEngine:
     async def _tts_edge(self, clean: str, path: str):
         for attempt in range(1, 4):
             try:
-                await edge_tts.Communicate(clean, self._tts_voice).save(path)
+                await edge_tts.Communicate(clean, self._tts_voice, rate="-8%").save(path)
                 return
             except Exception as e:
                 if attempt == 3:
@@ -232,7 +232,12 @@ class BotEngine:
         payload = json.dumps({
             "text": clean,
             "model_id": "eleven_multilingual_v2",
-            "voice_settings": {"stability": 0.5, "similarity_boost": 0.75},
+            "voice_settings": {
+                "stability": 0.35,
+                "similarity_boost": 0.80,
+                "style": 0.25,
+                "use_speaker_boost": True,
+            },
         }).encode("utf-8")
         headers = {
             "xi-api-key": self._el_api_key,
@@ -348,12 +353,15 @@ class BotEngine:
     def _generate_response(self, user: str, comment: str) -> str:
         system = (
             f"Eres la vendedora de {self._store_name} en un live de TikTok. "
-            "Solo texto plano, sin emojis, sin asteriscos, sin guiones. "
-            "Maximo 2 oraciones cortas. Tono amigable. "
-            "Para contacto di siempre 'escribenos al verdecito en pantalla'.\n\n"
+            "Habla como si charlaras en persona: natural, cercana, con pausas. "
+            "Solo texto plano, sin emojis, asteriscos ni guiones. "
+            "Maximo 2 oraciones cortas. Usa comas donde harias una pausa al hablar. "
+            "NUNCA menciones precios especificos; para precios y pedidos di siempre "
+            "'escribenos al verdecito'. "
+            "No repitas la pregunta del usuario. Ve directo a la respuesta.\n\n"
             f"CATALOGO:\n{self._catalog}"
         )
-        user_msg = f"{user} pregunta: {comment}. Responde en voz alta."
+        user_msg = f"Comentario de {user}: {comment}"
         try:
             if self._llm_provider == "openai":
                 return self._openai_chat(system, user_msg, 130)
@@ -378,7 +386,7 @@ class BotEngine:
             return
         response = await loop.run_in_executor(None, self._generate_response, user, comment)
         self.log(f"  -> {response}")
-        oral = f"{user} pregunta: {comment}. {response}"
+        oral = response
         path = os.path.join(AUDIO_DIR, f"resp_{int(time.time()*1000)}.mp3")
         await self._tts(oral, path)
         self.ready_q.put(path)
@@ -415,8 +423,9 @@ class BotEngine:
             await self._tts(s["text"], os.path.join(AUDIO_DIR, f"{s['id']}.mp3"))
             self.log(f"  Listo: {s['id']}")
         esp = os.path.join(AUDIO_DIR, "esperen.mp3")
-        if not os.path.exists(esp):
-            await self._tts("Esperen un momento...", esp)
+        if os.path.exists(esp):
+            os.remove(esp)
+        await self._tts("Esperen un momento...", esp)
         self.log("Pitch listo.")
 
     async def _pitch_loop(self):
