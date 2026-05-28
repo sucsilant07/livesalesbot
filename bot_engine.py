@@ -94,6 +94,8 @@ class BotEngine:
         self._llm_provider = api.get("llm_provider", "anthropic")
         self._openai_api_key = api.get("openai_api_key", "").strip()
 
+        self._gemini_api_key = api.get("gemini_api_key", "").strip()
+
         if self._llm_provider == "openai":
             if not self._openai_api_key:
                 self.log("ERROR: Falta la OpenAI API Key. Configurala en 'Configuracion API'.")
@@ -102,6 +104,14 @@ class BotEngine:
                 return
             self._claude = None
             self.log("IA: OpenAI (gpt-4o-mini)")
+        elif self._llm_provider == "gemini":
+            if not self._gemini_api_key:
+                self.log("ERROR: Falta la Gemini API Key. Configurala en 'Configuracion API'.")
+                self._running = False
+                self._on_status(False)
+                return
+            self._claude = None
+            self.log("IA: Google Gemini (gemini-2.0-flash)")
         else:
             anthropic_key = api.get("anthropic_api_key", "")
             if not anthropic_key:
@@ -273,6 +283,24 @@ class BotEngine:
 
     # ── LLM helpers ────────────────────────────────────────────
 
+    def _gemini_chat(self, system: str, user_msg: str, max_tokens: int) -> str:
+        url = (
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            f"gemini-2.0-flash:generateContent?key={self._gemini_api_key}"
+        )
+        payload = json.dumps({
+            "system_instruction": {"parts": [{"text": system}]},
+            "contents": [{"parts": [{"text": user_msg}]}],
+            "generationConfig": {"maxOutputTokens": max_tokens},
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            url, data=payload, method="POST",
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read())
+        return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+
     def _openai_chat(self, system: str, user_msg: str, max_tokens: int) -> str:
         payload = json.dumps({
             "model": "gpt-4o-mini",
@@ -303,6 +331,8 @@ class BotEngine:
         try:
             if self._llm_provider == "openai":
                 text = self._openai_chat(system, comment, 5)
+            elif self._llm_provider == "gemini":
+                text = self._gemini_chat(system, comment, 5)
             else:
                 r = self._claude.messages.create(
                     model="claude-haiku-4-5-20251001",
@@ -327,6 +357,8 @@ class BotEngine:
         try:
             if self._llm_provider == "openai":
                 return self._openai_chat(system, user_msg, 130)
+            elif self._llm_provider == "gemini":
+                return self._gemini_chat(system, user_msg, 130)
             else:
                 r = self._claude.messages.create(
                     model="claude-haiku-4-5-20251001",

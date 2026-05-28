@@ -89,6 +89,23 @@ HELP_TEXTS: dict[str, dict] = {
             "learn.microsoft.com/azure/cognitive-services/speech-service/language-support"
         ),
     },
+    "gemini_api_key": {
+        "title": "Como obtener la Gemini API Key",
+        "body": (
+            "La API Key de Gemini permite al bot usar Google Gemini en lugar de Claude.\n\n"
+            "PASOS:\n"
+            "1. Ve a: aistudio.google.com y entra con tu cuenta de Google\n\n"
+            "2. En el menu izquierdo haz clic en 'Get API key'\n\n"
+            "3. Haz clic en 'Create API key'\n\n"
+            "4. Selecciona un proyecto de Google Cloud o crea uno nuevo\n\n"
+            "5. Copia la clave generada\n\n"
+            "6. Pegala en el campo 'Gemini API Key' del bot\n\n"
+            "MODELO: El bot usa gemini-2.0-flash, el modelo mas\n"
+            "rapido y economico de Google.\n\n"
+            "COSTO: Google ofrece un tier gratuito generoso.\n"
+            "Consulta los limites en: ai.google.dev/pricing"
+        ),
+    },
     "openai_api_key": {
         "title": "Como obtener la OpenAI API Key",
         "body": (
@@ -498,9 +515,9 @@ class APIPage(ctk.CTkFrame):
         self._provider_var = tk.StringVar(value=api.get("llm_provider", "anthropic"))
         ctk.CTkSegmentedButton(
             ia_frame,
-            values=["anthropic", "openai"],
+            values=["anthropic", "openai", "gemini"],
             variable=self._provider_var,
-            width=260,
+            width=360,
         ).grid(row=0, column=1, sticky="w", pady=12)
 
         form_oa = ctk.CTkFrame(self, fg_color="transparent")
@@ -508,6 +525,8 @@ class APIPage(ctk.CTkFrame):
         form_oa.columnconfigure(1, weight=1)
         self._make_field(form_oa, 0, "OpenAI API Key", "openai_api_key",
                          api, masked=True, help_topic="openai_api_key")
+        self._make_field(form_oa, 1, "Gemini API Key", "gemini_api_key",
+                         api, masked=True, help_topic="gemini_api_key")
 
         # ── Sección: ElevenLabs (opcional) ────────────────────────
         sep = ctk.CTkFrame(self, height=1, fg_color="gray30")
@@ -1049,6 +1068,8 @@ class App(ctk.CTk):
         provider = self.config_data.get("api", {}).get("llm_provider", "anthropic")
         if provider == "openai":
             key_field, key_label = "openai_api_key", "OpenAI API Key"
+        elif provider == "gemini":
+            key_field, key_label = "gemini_api_key", "Gemini API Key"
         else:
             key_field, key_label = "anthropic_api_key", "Anthropic API Key"
         if not self.config_data.get("api", {}).get(key_field, ""):

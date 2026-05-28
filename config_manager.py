@@ -15,6 +15,7 @@ DEFAULT_CONFIG = {
         "elevenlabs_voice_id": "",
         "llm_provider": "anthropic",
         "openai_api_key": "",
+        "gemini_api_key": "",
     },
     "store": {
         "name": "",
