@@ -356,8 +356,10 @@ class BotEngine:
             "Habla como si charlaras en persona: natural, cercana, con pausas. "
             "Solo texto plano, sin emojis, asteriscos ni guiones. "
             "Maximo 2 oraciones cortas. Usa comas donde harias una pausa al hablar. "
-            "NUNCA menciones precios especificos; para precios y pedidos di siempre "
-            "'escribenos al verdecito'. "
+            "Puedes mencionar precios directamente. "
+            "NUNCA digas que algo esta en pantalla, en la descripcion, ni hagas referencia "
+            "a lo que se ve en la transmision. "
+            "Para pedidos di siempre 'escribenos al verdecito'. "
             "No repitas la pregunta del usuario. Ve directo a la respuesta.\n\n"
             f"CATALOGO:\n{self._catalog}"
         )
