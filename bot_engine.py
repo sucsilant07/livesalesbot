@@ -219,7 +219,7 @@ class BotEngine:
     async def _tts_edge(self, clean: str, path: str):
         for attempt in range(1, 4):
             try:
-                await edge_tts.Communicate(clean, self._tts_voice, rate="-18%", pitch="+4Hz").save(path)
+                await edge_tts.Communicate(clean, self._tts_voice, rate="-18%").save(path)
                 return
             except Exception as e:
                 if attempt == 3:
@@ -271,6 +271,8 @@ class BotEngine:
                 await asyncio.sleep(3)
 
     async def _play(self, path: str):
+        pygame.mixer.music.stop()
+        pygame.mixer.music.unload()
         pygame.mixer.music.load(path)
         pygame.mixer.music.play()
         try:
@@ -425,11 +427,15 @@ class BotEngine:
                 return lines[1].strip()
         return text
 
+    @staticmethod
+    def _audio_ok(path: str) -> bool:
+        return os.path.exists(path) and os.path.getsize(path) > 1024
+
     async def _pregen_pitch(self):
         os.makedirs(AUDIO_DIR, exist_ok=True)
         missing = [
             s for s in self._segments
-            if not os.path.exists(os.path.join(AUDIO_DIR, f"{s['id']}.mp3"))
+            if not self._audio_ok(os.path.join(AUDIO_DIR, f"{s['id']}.mp3"))
         ]
         if not missing:
             self.log("Audios del pitch ya generados.")
@@ -457,7 +463,7 @@ class BotEngine:
         while not self._stop.is_set():
             seg = self._segments[idx]
             path = os.path.join(AUDIO_DIR, f"{seg['id']}.mp3")
-            if not os.path.exists(path):
+            if not self._audio_ok(path):
                 await self._tts(self._pitch_text(seg), path)
             self.log(f"Reproduciendo: {seg['id']}")
             self._primera = True
