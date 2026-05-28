@@ -127,15 +127,25 @@ class BotEngine:
             self._claude = anthropic.Anthropic(api_key=anthropic_key)
             self.log("IA: Anthropic (claude-haiku-4-5)")
 
+        device = settings.get("audio_device", "").strip()
         try:
-            pygame.init()
-            device = settings.get("audio_device", "")
             if device:
-                pygame.mixer.init(devicename=device)
+                pygame.mixer.pre_init(devicename=device)
+            pygame.init()
+            info = pygame.mixer.get_init()
+            label = f'"{device}"' if device else "predeterminado"
+            if info:
+                self.log(f"Audio OK — dispositivo: {label} ({info[0]}Hz)")
             else:
-                pygame.mixer.init()
+                self.log(f"Advertencia: mixer no inicializado — dispositivo: {label}")
         except Exception as e:
-            self.log(f"Advertencia de audio: {e}")
+            self.log(f"Error de audio ({label}): {e}")
+            try:
+                pygame.mixer.quit()
+                pygame.mixer.init()
+                self.log("Audio: usando dispositivo predeterminado como fallback")
+            except Exception:
+                pass
 
         os.environ.setdefault(
             "WHITELIST_AUTHENTICATED_SESSION_ID_HOST", "tiktok.eulerstream.com"
