@@ -11,6 +11,8 @@ DEFAULT_CONFIG = {
         "tiktok_session_id": "",
         "anthropic_api_key": "",
         "tts_voice": "es-PE-CamilaNeural",
+        "elevenlabs_api_key": "",
+        "elevenlabs_voice_id": "",
     },
     "store": {
         "name": "",

@@ -1,10 +1,13 @@
 """Motor del bot: TikTok Live + Claude + TTS. Sin dependencia de la GUI."""
 import asyncio
+import json
 import os
 import queue
 import re
 import threading
 import time
+import urllib.error
+import urllib.request
 from typing import Callable, Optional
 
 import anthropic
@@ -70,6 +73,12 @@ class BotEngine:
         settings = self.config.get("settings", {})
 
         self._tts_voice = api.get("tts_voice", "es-PE-CamilaNeural")
+        self._el_api_key = api.get("elevenlabs_api_key", "").strip()
+        self._el_voice_id = api.get("elevenlabs_voice_id", "").strip()
+        if self._el_api_key and self._el_voice_id:
+            self.log(f"TTS: ElevenLabs (voice_id={self._el_voice_id})")
+        else:
+            self.log(f"TTS: Edge TTS ({self._tts_voice})")
         self._username = api.get("tiktok_username", "")
         self._session_id = api.get("tiktok_session_id", "")
         self._catalog = build_catalog_text(self.config)
@@ -171,6 +180,12 @@ class BotEngine:
 
     async def _tts(self, text: str, path: str):
         clean = self._tts_clean(text)
+        if self._el_api_key and self._el_voice_id:
+            await self._tts_elevenlabs(clean, path)
+        else:
+            await self._tts_edge(clean, path)
+
+    async def _tts_edge(self, clean: str, path: str):
         for attempt in range(1, 4):
             try:
                 await edge_tts.Communicate(clean, self._tts_voice).save(path)
@@ -178,7 +193,45 @@ class BotEngine:
             except Exception as e:
                 if attempt == 3:
                     raise
-                self.log(f"TTS error intento {attempt}/3: {e}")
+                self.log(f"TTS Edge error intento {attempt}/3: {e}")
+                await asyncio.sleep(3)
+
+    async def _tts_elevenlabs(self, clean: str, path: str):
+        url = f"https://api.elevenlabs.io/v1/text-to-speech/{self._el_voice_id}"
+        payload = json.dumps({
+            "text": clean,
+            "model_id": "eleven_multilingual_v2",
+            "voice_settings": {"stability": 0.5, "similarity_boost": 0.75},
+        }).encode("utf-8")
+        headers = {
+            "xi-api-key": self._el_api_key,
+            "Content-Type": "application/json",
+            "Accept": "audio/mpeg",
+        }
+        loop = asyncio.get_event_loop()
+        for attempt in range(1, 4):
+            try:
+                def _fetch():
+                    req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
+                    with urllib.request.urlopen(req, timeout=30) as resp:
+                        return resp.read()
+                audio_bytes = await loop.run_in_executor(None, _fetch)
+                with open(path, "wb") as f:
+                    f.write(audio_bytes)
+                return
+            except urllib.error.HTTPError as e:
+                body = e.read().decode("utf-8", errors="ignore")
+                self.log(f"ElevenLabs HTTP {e.code}: {body[:120]}")
+                if e.code in (401, 403):
+                    self.log("API Key o Voice ID invalidos. Revisa la configuracion.")
+                    raise
+                if attempt == 3:
+                    raise
+                await asyncio.sleep(3)
+            except Exception as e:
+                if attempt == 3:
+                    raise
+                self.log(f"ElevenLabs error intento {attempt}/3: {e}")
                 await asyncio.sleep(3)
 
     async def _play(self, path: str):

@@ -89,6 +89,41 @@ HELP_TEXTS: dict[str, dict] = {
             "learn.microsoft.com/azure/cognitive-services/speech-service/language-support"
         ),
     },
+    "elevenlabs_api_key": {
+        "title": "Como obtener la ElevenLabs API Key",
+        "body": (
+            "ElevenLabs ofrece voces de alta calidad con IA (opcional).\n"
+            "Si lo configuras, el bot usara ElevenLabs en lugar de Edge TTS.\n\n"
+            "PASOS:\n"
+            "1. Ve a: elevenlabs.io y crea una cuenta\n\n"
+            "2. En el menu superior derecho haz clic en tu perfil\n\n"
+            "3. Selecciona 'Profile + API key'\n\n"
+            "4. Copia tu API Key\n\n"
+            "5. Pegala en el campo 'ElevenLabs API Key' del bot\n\n"
+            "COSTO: ElevenLabs tiene un plan gratuito con 10,000\n"
+            "caracteres al mes. Los planes de pago ofrecen mas.\n\n"
+            "NOTA: Si dejas este campo vacio, el bot usara Edge TTS\n"
+            "(Microsoft) que es completamente gratuito."
+        ),
+    },
+    "elevenlabs_voice_id": {
+        "title": "Como obtener el Voice ID de ElevenLabs",
+        "body": (
+            "El Voice ID identifica que voz usara ElevenLabs.\n\n"
+            "PASOS PARA VOCES PREDEFINIDAS:\n"
+            "1. Ve a: elevenlabs.io/voice-library\n\n"
+            "2. Busca y selecciona la voz que quieras\n\n"
+            "3. Haz clic en el boton 'Add to my voices'\n\n"
+            "4. Ve a tu cuenta > Voices\n\n"
+            "5. Haz clic en el icono de ID junto a la voz\n"
+            "   El ID es una cadena como: 21m00Tcm4TlvDq8ikWAM\n\n"
+            "PASOS PARA TUS VOCES CLONADAS:\n"
+            "1. Ve a tu cuenta > Voices\n"
+            "2. Selecciona la voz clonada\n"
+            "3. Copia el Voice ID que aparece debajo del nombre\n\n"
+            "Pega el ID en el campo 'ElevenLabs Voice ID' del bot."
+        ),
+    },
     "audio_device": {
         "title": "Dispositivo de audio",
         "body": (
@@ -421,10 +456,33 @@ class APIPage(ctk.CTkFrame):
                       command=lambda: HelpWindow(self, "tts_voice")).grid(
             row=row, column=2, padx=(8, 0), pady=12)
 
+        # Separador ElevenLabs (sección opcional)
+        sep = ctk.CTkFrame(self, height=1, fg_color="gray30")
+        sep.grid(row=3, column=0, sticky="ew", padx=24, pady=(24, 0))
+
+        ctk.CTkLabel(
+            self, text="ElevenLabs (opcional)",
+            font=ctk.CTkFont(size=14, weight="bold"), anchor="w",
+        ).grid(row=4, column=0, sticky="w", padx=24, pady=(12, 0))
+        ctk.CTkLabel(
+            self,
+            text="Si configuras estos campos, el bot usara ElevenLabs en lugar de Edge TTS para voces mas realistas.",
+            text_color="gray60", anchor="w",
+        ).grid(row=5, column=0, sticky="w", padx=24, pady=(0, 8))
+
+        form_el = ctk.CTkFrame(self, fg_color="transparent")
+        form_el.grid(row=6, column=0, sticky="ew", padx=24)
+        form_el.columnconfigure(1, weight=1)
+
+        self._make_field(form_el, 0, "ElevenLabs API Key", "elevenlabs_api_key",
+                         api, masked=True, help_topic="elevenlabs_api_key")
+        self._make_field(form_el, 1, "ElevenLabs Voice ID", "elevenlabs_voice_id",
+                         api, masked=False, help_topic="elevenlabs_voice_id")
+
         ctk.CTkButton(
             self, text="Guardar configuracion", height=40,
             command=self._save,
-        ).grid(row=3, column=0, sticky="w", padx=24, pady=(28, 0))
+        ).grid(row=7, column=0, sticky="w", padx=24, pady=(28, 0))
 
     def _make_field(self, form, row: int, label: str, key: str, api: dict,
                     masked: bool, help_topic: str):
