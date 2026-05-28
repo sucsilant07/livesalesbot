@@ -219,7 +219,7 @@ class BotEngine:
     async def _tts_edge(self, clean: str, path: str):
         for attempt in range(1, 4):
             try:
-                await edge_tts.Communicate(clean, self._tts_voice, rate="-8%").save(path)
+                await edge_tts.Communicate(clean, self._tts_voice, rate="-18%", pitch="+4Hz").save(path)
                 return
             except Exception as e:
                 if attempt == 3:
@@ -233,9 +233,9 @@ class BotEngine:
             "text": clean,
             "model_id": "eleven_multilingual_v2",
             "voice_settings": {
-                "stability": 0.35,
-                "similarity_boost": 0.80,
-                "style": 0.25,
+                "stability": 0.28,
+                "similarity_boost": 0.82,
+                "style": 0.35,
                 "use_speaker_boost": True,
             },
         }).encode("utf-8")
@@ -353,17 +353,19 @@ class BotEngine:
     def _generate_response(self, user: str, comment: str) -> str:
         system = (
             f"Eres la vendedora de {self._store_name} en un live de TikTok. "
-            "Habla como si charlaras en persona: natural, cercana, con pausas. "
+            "Habla como si charlaras en persona: con calma, naturalidad y expresion. "
             "Solo texto plano, sin emojis, asteriscos ni guiones. "
-            "Maximo 2 oraciones cortas. Usa comas donde harias una pausa al hablar. "
+            "Maximo 2 oraciones. Usa comas y puntos para crear pausas naturales al hablar. "
+            f"Empieza siempre mencionando el nombre '{user}' de forma natural y calida "
+            "(por ejemplo: 'Hola {user},' o 'Claro que si {user},' o 'Buena pregunta {user},'). "
+            "Luego responde la pregunta resumiendo el comentario brevemente antes de dar la respuesta. "
             "Puedes mencionar precios directamente. "
             "NUNCA digas que algo esta en pantalla, en la descripcion, ni hagas referencia "
             "a lo que se ve en la transmision. "
-            "Para pedidos di siempre 'escribenos al verdecito'. "
-            "No repitas la pregunta del usuario. Ve directo a la respuesta.\n\n"
+            "Para pedidos di siempre 'escribenos al verdecito'.\n\n"
             f"CATALOGO:\n{self._catalog}"
         )
-        user_msg = f"Comentario de {user}: {comment}"
+        user_msg = f"El usuario '{user}' pregunta: {comment}"
         try:
             if self._llm_provider == "openai":
                 return self._openai_chat(system, user_msg, 130)
