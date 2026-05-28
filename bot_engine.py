@@ -413,6 +413,18 @@ class BotEngine:
 
     # ── bucle pitch ────────────────────────────────────────────
 
+    @staticmethod
+    def _pitch_text(seg: dict) -> str:
+        """Devuelve el texto del segmento sin la primera línea si es un título corto."""
+        text = seg["text"].strip()
+        lines = text.split("\n", 1)
+        if len(lines) == 2 and lines[1].strip():
+            first = lines[0].strip().rstrip(":")
+            # Si la primera línea tiene 6 palabras o menos, es un título — la omitimos
+            if len(first.split()) <= 6:
+                return lines[1].strip()
+        return text
+
     async def _pregen_pitch(self):
         os.makedirs(AUDIO_DIR, exist_ok=True)
         missing = [
@@ -424,7 +436,7 @@ class BotEngine:
             return
         self.log(f"Generando {len(missing)} audio(s) del pitch...")
         for s in missing:
-            await self._tts(s["text"], os.path.join(AUDIO_DIR, f"{s['id']}.mp3"))
+            await self._tts(self._pitch_text(s), os.path.join(AUDIO_DIR, f"{s['id']}.mp3"))
             self.log(f"  Listo: {s['id']}")
         esp = os.path.join(AUDIO_DIR, "esperen.mp3")
         if os.path.exists(esp):
@@ -446,7 +458,7 @@ class BotEngine:
             seg = self._segments[idx]
             path = os.path.join(AUDIO_DIR, f"{seg['id']}.mp3")
             if not os.path.exists(path):
-                await self._tts(seg["text"], path)
+                await self._tts(self._pitch_text(seg), path)
             self.log(f"Reproduciendo: {seg['id']}")
             self._primera = True
             await self._play(path)
